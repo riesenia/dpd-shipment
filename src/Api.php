@@ -12,9 +12,6 @@ class Api
     /** @var \SoapClient */
     protected $soap;
 
-    /** @var array */
-    protected $authHeader;
-
     /** @var string */
     protected $wsdl = 'https://api.dpdportal.sk/shipment/soap?wsdl';
 
@@ -58,11 +55,11 @@ class Api
             'shipment' => $shipments
         ]);
 
-        if ($response->result->success == false) {
-            return ['errors' => $response->result->messages];
+        if ((bool) $response->result->success == false) {
+            return ['errors' => (array) $response->result->messages];
         }
 
-        return ['label' => $response->result->label];
+        return ['label' => (string) $response->result->label];
     }
 
     /**
