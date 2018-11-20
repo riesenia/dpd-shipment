@@ -51,9 +51,13 @@ class Api
      */
     public function send(array $shipments): array
     {
-        $response = $this->soap->Create([
-            'shipment' => $shipments
-        ]);
+        try {
+            $response = $this->soap->Create([
+                'shipment' => $shipments
+            ]);
+        } catch (\Exception $e) {
+            return ['errors' => [$e->getMessage()], 'context' => $this->soap->__getLastResponse()];
+        }
 
         if ((bool) $response->result->success == false) {
             return ['errors' => (array) $response->result->messages];
