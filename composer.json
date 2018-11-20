@@ -1,0 +1,10 @@
+{
+    "require": {
+        "rshop/php-cs-fixer-config": "^1.2"
+    },
+    "autoload": {
+        "psr-4": {
+            "Riesenia\\DPDShipment\\": "src/"
+        }
+    }
+}
