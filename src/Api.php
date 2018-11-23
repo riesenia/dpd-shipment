@@ -4,19 +4,25 @@ declare(strict_types=1);
 
 namespace Riesenia\DPDShipment;
 
+use setasign\Fpdi\Fpdi;
+use setasign\Fpdi\PdfParser\StreamReader;
+
 /**
  * Class Api.
  */
 class Api
 {
     /** @var string */
-    protected $endpoint = 'https://api.dpdportal.sk/shipment/json';
-
-    /** @var string */
     protected $clientKey;
 
     /** @var string */
     protected $email;
+
+    /** @var string */
+    protected $endpoint = 'https://api.dpdportal.sk/shipment/json';
+
+    /** @var Fpdi */
+    protected $fpdi;
 
     /** @var string */
     protected $password;
@@ -26,6 +32,7 @@ class Api
 
     /** @var array */
     protected $errors = [];
+
 
     /**
      * Api constructor.
@@ -39,6 +46,7 @@ class Api
     {
         $this->clientKey = $clientKey;
         $this->email = $email;
+        $this->fpdi = new Fpdi();
         $this->password = $password;
         $this->options = $options + ['testMode' => false, 'timeout' => 10];
 
@@ -48,23 +56,17 @@ class Api
     }
 
     /**
-     * Create shipments and return label url on success.
+     * Create shipment and return label url on success.
      *
-     * @param array $shipments
+     * @param array $shipment
      *
      * @return string
      */
-    public function send(array $shipments): string
+    public function send(array $shipment): string
     {
         $response = $this->sendRequest('create', [
-            'shipment' => $shipments
+            'shipment' => $shipment
         ]);
-
-        if (isset($response['errors'])) {
-            $this->errors = $response['errors'];
-
-            throw new ShipmentApiException('Errors occurred while processing request.');
-        }
 
         return (string) $response['result']['result']['label'];
     }
@@ -72,41 +74,51 @@ class Api
     /**
      * Get label from specified url.
      *
-     * @param string $url
+     * @param array $urls
      *
      * @return string
      */
-    public function generateLabel(string $url): string
+    public function generateLabels(array $urls): string
     {
-        $ch = \curl_init($url);
+        foreach ($urls as $url) {
+            $ch = \curl_init($url);
 
-        \curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            \curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 
-        $response = \curl_exec($ch);
+            $response = \curl_exec($ch);
 
-        if (\curl_errno($ch)) {
-            throw new ShipmentApiException(\curl_error($ch));
+            if (\curl_errno($ch)) {
+                throw new ShipmentApiException(\curl_error($ch));
+            }
+
+            \curl_close($ch);
+
+            $finfo = \finfo_open(FILEINFO_MIME_TYPE);
+
+            if (\finfo_buffer($finfo, $response) !== 'application/pdf') {
+                throw new ShipmentApiException('Unsupported mime type.');
+            }
+
+            $this->addPagesToPdf($response);
         }
 
-        \curl_close($ch);
-
-        $finfo = \finfo_open(FILEINFO_MIME_TYPE);
-
-        if (\finfo_buffer($finfo, $response) !== 'application/pdf') {
-            throw new ShipmentApiException('Unsupported mime type.');
-        }
-
-        return $response;
+        return $this->fpdi->Output('S');
     }
 
     /**
-     * Errors getter.
+     * Append pages to single pdf.
      *
-     * @return array
+     * @param string $pdfData
      */
-    public function getErrors(): array
+    protected function addPagesToPdf(string $pdfData)
     {
-        return $this->errors;
+        $pageCount = $this->fpdi->setSourceFile(StreamReader::createByString(\base64_decode($pdfData)));
+
+        for ($i = 1; $i <= $pageCount; ++$i) {
+            $template = $this->fpdi->importPage($i);
+            $this->fpdi->AddPage();
+            $this->fpdi->useTemplate($template);
+        }
     }
 
     /**
@@ -143,13 +155,13 @@ class Api
         $response = \json_decode(\curl_exec($ch), true);
 
         if ($code = \curl_errno($ch)) {
-            throw new \Exception('Request failed: ' . \curl_error($ch), $code);
+            throw new ShipmentApiException('Request failed: ' . \curl_error($ch), $code);
         }
 
         \curl_close($ch);
 
-        if (isset($response->result->result) && (bool) $response->result->result[0]->success == false) {
-            return ['errors' => (array) $response->result->result[0]->messages];
+        if (isset($response['result']['result'][0]) && (bool) $response['result']['result'][0]['success'] == false) {
+            throw new ShipmentApiException(array_column($response['result']['result'][0]['messages'], 'value'));
         }
 
         return $response;
