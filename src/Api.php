@@ -24,6 +24,9 @@ class Api
     /** @var array */
     protected $options = [];
 
+    /** @var array */
+    protected $errors = [];
+
     /**
      * Api constructor.
      *
@@ -49,23 +52,21 @@ class Api
      *
      * @param array $shipments
      *
-     * @return array
+     * @return string
      */
-    public function send(array $shipments): array
+    public function send(array $shipments): string
     {
-        try {
-            $response = $this->sendRequest('create', [
-                'shipment' => $shipments
-            ]);
-        } catch (\Exception $e) {
-            return ['errors' => [$e->getMessage()]];
-        }
+        $response = $this->sendRequest('create', [
+            'shipment' => $shipments
+        ]);
 
         if (isset($response['errors'])) {
-            return ['errors' => $response['errors']];
+            $this->errors = $response['errors'];
+
+            throw new ShipmentApiException('Errors occurred while processing request.');
         }
 
-        return ['label' => (string) $response['result']['result']['label']];
+        return (string) $response['result']['result']['label'];
     }
 
     /**
@@ -73,9 +74,9 @@ class Api
      *
      * @param string $url
      *
-     * @return array
+     * @return string
      */
-    public function generateLabel(string $url): array
+    public function generateLabel(string $url): string
     {
         $ch = \curl_init($url);
 
@@ -84,7 +85,7 @@ class Api
         $response = \curl_exec($ch);
 
         if (\curl_errno($ch)) {
-            return ['error' => \curl_error($ch)];
+            throw new ShipmentApiException(\curl_error($ch));
         }
 
         \curl_close($ch);
@@ -92,10 +93,20 @@ class Api
         $finfo = \finfo_open(FILEINFO_MIME_TYPE);
 
         if (\finfo_buffer($finfo, $response) !== 'application/pdf') {
-            return ['error' => 'Unsupported label mime type.'];
+            throw new ShipmentApiException('Unsupported mime type.');
         }
 
-        return ['label' => $response];
+        return $response;
+    }
+
+    /**
+     * Errors getter.
+     *
+     * @return array
+     */
+    public function getErrors(): array
+    {
+        return $this->errors;
     }
 
     /**
@@ -104,9 +115,9 @@ class Api
      * @param string $method
      * @param array  $data
      *
-     * @return array|mixed
+     * @return array
      */
-    protected function sendRequest(string $method, array $data)
+    protected function sendRequest(string $method, array $data): array
     {
         $data['DPDSecurity'] = [
             'SecurityToken' => [
@@ -129,7 +140,7 @@ class Api
         \curl_setopt($ch, CURLOPT_POSTFIELDS, \json_encode($postData));
         \curl_setopt($ch, CURLOPT_TIMEOUT, $this->options['timeout']);
 
-        $response = \json_decode(\curl_exec($ch));
+        $response = \json_decode(\curl_exec($ch), true);
 
         if ($code = \curl_errno($ch)) {
             throw new \Exception('Request failed: ' . \curl_error($ch), $code);
