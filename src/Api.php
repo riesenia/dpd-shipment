@@ -71,7 +71,7 @@ class Api
     }
 
     /**
-     * Get label from specified url.
+     * Get labels from specified urls.
      *
      * @param array $urls
      *
@@ -87,7 +87,7 @@ class Api
             $response = \curl_exec($ch);
 
             if (\curl_errno($ch)) {
-                throw new ShipmentApiException(\curl_error($ch));
+                continue;
             }
 
             \curl_close($ch);
@@ -95,7 +95,7 @@ class Api
             $finfo = \finfo_open(FILEINFO_MIME_TYPE);
 
             if (\finfo_buffer($finfo, $response) !== 'application/pdf') {
-                throw new ShipmentApiException('Unsupported mime type.');
+                continue;
             }
 
             $this->addPagesToPdf($response);
