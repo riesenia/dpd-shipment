@@ -27,10 +27,10 @@ class Api
     /**
      * Api constructor.
      *
-     * @param $clientKey
-     * @param $email
-     * @param $password
-     * @param array $options
+     * @param string $clientKey
+     * @param string $email
+     * @param string $password
+     * @param array  $options
      */
     public function __construct(string $clientKey, string $email, string $password, array $options = [])
     {
@@ -101,12 +101,12 @@ class Api
     /**
      * Send cURL request.
      *
-     * @param $method
-     * @param $data
+     * @param string $method
+     * @param array  $data
      *
      * @return array|mixed
      */
-    protected function sendRequest($method, $data)
+    protected function sendRequest(string $method, array $data)
     {
         $data['DPDSecurity'] = [
             'SecurityToken' => [
