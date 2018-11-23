@@ -12,6 +12,15 @@ class Api
     /** @var string */
     protected $endpoint = 'https://api.dpdportal.sk/shipment/json';
 
+    /** @var string */
+    protected $clientKey;
+
+    /** @var string */
+    protected $email;
+
+    /** @var string */
+    protected $password;
+
     /** @var array */
     protected $options = [];
 
