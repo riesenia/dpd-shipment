@@ -94,6 +94,7 @@ class Api
      *
      * @param $method
      * @param $data
+     *
      * @return array|mixed
      */
     protected function sendRequest($method, $data)
@@ -113,19 +114,19 @@ class Api
             'params' => $data
         ];
 
-        $ch = curl_init($this->endpoint);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($postData));
-        curl_setopt($ch, CURLOPT_TIMEOUT, $this->options['timeout']);
+        $ch = \curl_init($this->endpoint);
+        \curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        \curl_setopt($ch, CURLOPT_POST, true);
+        \curl_setopt($ch, CURLOPT_POSTFIELDS, \json_encode($postData));
+        \curl_setopt($ch, CURLOPT_TIMEOUT, $this->options['timeout']);
 
-        $response = \json_decode(curl_exec($ch));
+        $response = \json_decode(\curl_exec($ch));
 
-        if ($code = curl_errno($ch)) {
-            throw new \Exception('Request failed: ' . curl_error($ch), $code);
+        if ($code = \curl_errno($ch)) {
+            throw new \Exception('Request failed: ' . \curl_error($ch), $code);
         }
 
-        curl_close($ch);
+        \curl_close($ch);
 
         if (isset($response->result->result) && (bool) $response->result->result[0]->success == false) {
             return ['errors' => (array) $response->result->result[0]->messages];
