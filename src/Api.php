@@ -9,11 +9,8 @@ namespace Riesenia\DPDShipment;
  */
 class Api
 {
-    /** @var \SoapClient */
-    protected $soap;
-
     /** @var string */
-    protected $wsdl = 'https://api.dpdportal.sk/shipment/soap?wsdl';
+    protected $endpoint = 'https://api.dpdportal.sk/shipment/json';
 
     /**
      * Api constructor.
@@ -25,20 +22,12 @@ class Api
      */
     public function __construct(string $clientKey, string $email, string $password, bool $testMode = false)
     {
-        $this->soap = new \SoapClient($this->wsdl, [
-            'trace' => $testMode
-        ]);
-
-        $this->soap->__setSoapHeaders(new \SoapHeader('http://www.dpdportal.sk/XMLSchema/DPDSecurity/v2', 'DPDSecurity', [
-            'SecurityToken' => [
-                'ClientKey' => $clientKey,
-                'Email' => $email,
-                'Password' => $password
-            ]
-        ]));
+        $this->clientKey = $clientKey;
+        $this->email = $email;
+        $this->password = $password;
 
         if ($testMode) {
-            $this->soap->__setLocation('https://capi.dpdportal.sk/apix/shipment');
+            $this->endpoint = 'https://capi.dpdportal.sk/apix/shipment/json';
         }
     }
 
@@ -52,18 +41,18 @@ class Api
     public function send(array $shipments): array
     {
         try {
-            $response = $this->soap->Create([
+            $response = $this->sendRequest('create', [
                 'shipment' => $shipments
             ]);
         } catch (\Exception $e) {
-            return ['errors' => [$e->getMessage()], 'context' => $this->soap->__getLastResponse()];
+            return ['errors' => [$e->getMessage()]];
         }
 
-        if ((bool) $response->result->success == false) {
-            return ['errors' => (array) $response->result->messages];
+        if (isset($response['errors'])) {
+            return ['errors' => $response['errors']];
         }
 
-        return ['label' => (string) $response->result->label];
+        return ['label' => (string) $response['result']['result']['label']];
     }
 
     /**
@@ -94,5 +83,49 @@ class Api
         }
 
         return ['label' => $response];
+    }
+
+    /**
+     * Send cURL request.
+     *
+     * @param $method
+     * @param $data
+     * @return array|mixed
+     */
+    protected function sendRequest($method, $data)
+    {
+        $data['DPDSecurity'] = [
+            'SecurityToken' => [
+                'ClientKey' => $this->clientKey,
+                'Email' => $this->email,
+                'Password' => $this->password
+            ]
+        ];
+
+        $postData = [
+            'id' => 1,
+            'jsonrpc' => '2.0',
+            'method' => $method,
+            'params' => $data
+        ];
+
+        $ch = curl_init($this->endpoint);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($postData));
+
+        $response = \json_decode(curl_exec($ch));
+
+        if ($code = curl_errno($ch)) {
+            throw new \Exception('Request failed: ' . curl_error($ch), $code);
+        }
+
+        curl_close($ch);
+
+        if (isset($response->result->result) && (bool) $response->result->result[0]->success == false) {
+            return ['errors' => (array) $response->result->result[0]->messages];
+        }
+
+        return $response;
     }
 }
