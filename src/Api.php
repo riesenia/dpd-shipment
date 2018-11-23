@@ -83,6 +83,7 @@ class Api
             $ch = \curl_init($url);
 
             \curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            \curl_setopt($ch, CURLOPT_TIMEOUT, $this->options['timeout']);
 
             $response = \curl_exec($ch);
 
