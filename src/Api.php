@@ -33,7 +33,6 @@ class Api
     /** @var array */
     protected $errors = [];
 
-
     /**
      * Api constructor.
      *
@@ -161,7 +160,7 @@ class Api
         \curl_close($ch);
 
         if (isset($response['result']['result'][0]) && (bool) $response['result']['result'][0]['success'] == false) {
-            throw new ShipmentApiException(array_column($response['result']['result'][0]['messages'], 'value'));
+            throw new ShipmentApiException(\array_column($response['result']['result'][0]['messages'], 'value'));
         }
 
         return $response;
