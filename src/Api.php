@@ -12,21 +12,25 @@ class Api
     /** @var string */
     protected $endpoint = 'https://api.dpdportal.sk/shipment/json';
 
+    /** @var array */
+    protected $options = [];
+
     /**
      * Api constructor.
      *
      * @param $clientKey
      * @param $email
      * @param $password
-     * @param bool $testMode
+     * @param array $options
      */
-    public function __construct(string $clientKey, string $email, string $password, bool $testMode = false)
+    public function __construct(string $clientKey, string $email, string $password, array $options = [])
     {
         $this->clientKey = $clientKey;
         $this->email = $email;
         $this->password = $password;
+        $this->options = $options + ['testMode' => false, 'timeout' => 10];
 
-        if ($testMode) {
+        if ($this->options['testMode']) {
             $this->endpoint = 'https://capi.dpdportal.sk/apix/shipment/json';
         }
     }
@@ -113,6 +117,7 @@ class Api
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($postData));
+        curl_setopt($ch, CURLOPT_TIMEOUT, $this->options['timeout']);
 
         $response = \json_decode(curl_exec($ch));
 
