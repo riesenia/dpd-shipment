@@ -3,7 +3,7 @@
     "description": "DPD Shipment Api PHP client implementation",
     "license": "MIT",
     "require": {
-        "setasign/fpdi-fpdf": "^2.0"
+        "setasign/fpdi-fpdf": "*"
     },
     "require-dev": {
         "rshop/php-cs-fixer-config": "^1.2"
