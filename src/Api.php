@@ -94,13 +94,14 @@ class Api
         \curl_setopt($ch, CURLOPT_POSTFIELDS, \json_encode($postData));
         \curl_setopt($ch, CURLOPT_TIMEOUT, $this->options['timeout']);
 
-        $response = \json_decode(\curl_exec($ch), true);
+        $response = \curl_exec($ch);
 
         if (\curl_errno($ch)) {
             throw new ShipmentApiException('Request failed: ' . \curl_error($ch));
         }
 
         \curl_close($ch);
+        $response = \json_decode($response, true);
 
         if (isset($response['result']['result'][0]) && !(bool) $response['result']['result'][0]['success']) {
             throw new ShipmentApiException(\implode(' ', \array_column($response['result']['result'][0]['messages'], 'value')));
