@@ -48,19 +48,19 @@ class Api
     }
 
     /**
-     * Create shipment and return label url on success.
+     * Create shipment and return response on success.
      *
      * @param array $shipment
      *
-     * @return string
+     * @return array
      */
-    public function send(array $shipment): string
+    public function send(array $shipment): array
     {
         $response = $this->sendRequest('create', [
             'shipment' => $shipment
         ]);
 
-        return (string) $response['result']['result']['label'];
+        return $response['result']['result'][0];
     }
 
     /**
@@ -103,7 +103,7 @@ class Api
         \curl_close($ch);
         $response = \json_decode($response, true);
 
-        if (isset($response['result']['result'][0]) && !(bool) $response['result']['result'][0]['success']) {
+        if (isset($response['result']['result'][0]['success']) && !$response['result']['result'][0]['success']) {
             throw new ShipmentApiException(\implode(' ', \array_column($response['result']['result'][0]['messages'], 'value')));
         }
 
