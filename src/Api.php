@@ -4,9 +4,6 @@ declare(strict_types=1);
 
 namespace Riesenia\DPDShipment;
 
-use setasign\Fpdi\Fpdi;
-use setasign\Fpdi\PdfParser\StreamReader;
-
 /**
  * Class Api.
  */
@@ -20,9 +17,6 @@ class Api
 
     /** @var string */
     protected $endpoint = 'https://api.dpdportal.sk/shipment/json';
-
-    /** @var Fpdi */
-    protected $fpdi;
 
     /** @var string */
     protected $password;
@@ -45,7 +39,6 @@ class Api
     {
         $this->clientKey = $clientKey;
         $this->email = $email;
-        $this->fpdi = new Fpdi();
         $this->password = $password;
         $this->options = $options + ['testMode' => false, 'timeout' => 10];
 
@@ -55,70 +48,19 @@ class Api
     }
 
     /**
-     * Create shipment and return label url on success.
+     * Create shipment and return response on success.
      *
      * @param array $shipment
      *
-     * @return string
+     * @return array
      */
-    public function send(array $shipment): string
+    public function send(array $shipment): array
     {
         $response = $this->sendRequest('create', [
             'shipment' => $shipment
         ]);
 
-        return (string) $response['result']['result']['label'];
-    }
-
-    /**
-     * Get labels from specified urls.
-     *
-     * @param array $urls
-     *
-     * @return string
-     */
-    public function generateLabels(array $urls): string
-    {
-        foreach ($urls as $url) {
-            $ch = \curl_init($url);
-
-            \curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            \curl_setopt($ch, CURLOPT_TIMEOUT, $this->options['timeout']);
-
-            $response = \curl_exec($ch);
-
-            if (\curl_errno($ch)) {
-                continue;
-            }
-
-            \curl_close($ch);
-
-            $finfo = \finfo_open(FILEINFO_MIME_TYPE);
-
-            if (\finfo_buffer($finfo, $response) !== 'application/pdf') {
-                continue;
-            }
-
-            $this->addPagesToPdf($response);
-        }
-
-        return $this->fpdi->Output('S');
-    }
-
-    /**
-     * Append pages to single pdf.
-     *
-     * @param string $pdfData
-     */
-    protected function addPagesToPdf(string $pdfData)
-    {
-        $pageCount = $this->fpdi->setSourceFile(StreamReader::createByString(\base64_decode($pdfData)));
-
-        for ($i = 1; $i <= $pageCount; ++$i) {
-            $template = $this->fpdi->importPage($i);
-            $this->fpdi->AddPage();
-            $this->fpdi->useTemplate($template);
-        }
+        return $response['result']['result'][0];
     }
 
     /**
@@ -152,16 +94,17 @@ class Api
         \curl_setopt($ch, CURLOPT_POSTFIELDS, \json_encode($postData));
         \curl_setopt($ch, CURLOPT_TIMEOUT, $this->options['timeout']);
 
-        $response = \json_decode(\curl_exec($ch), true);
+        $response = \curl_exec($ch);
 
-        if ($code = \curl_errno($ch)) {
-            throw new ShipmentApiException('Request failed: ' . \curl_error($ch), $code);
+        if (\curl_errno($ch)) {
+            throw new ShipmentApiException('Request failed: ' . \curl_error($ch));
         }
 
         \curl_close($ch);
+        $response = \json_decode($response, true);
 
-        if (isset($response['result']['result'][0]) && (bool) $response['result']['result'][0]['success'] == false) {
-            throw new ShipmentApiException(\array_column($response['result']['result'][0]['messages'], 'value'));
+        if (isset($response['result']['result'][0]['success']) && !$response['result']['result'][0]['success']) {
+            throw new ShipmentApiException(\implode(' ', \array_column($response['result']['result'][0]['messages'], 'value')));
         }
 
         return $response;
