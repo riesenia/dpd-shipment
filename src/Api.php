@@ -16,7 +16,7 @@ class Api
     protected $email;
 
     /** @var string */
-    protected $endpoint = 'https://api.dpdportal.sk/shipment/json';
+    protected $endpoint = 'https://api.dpdportal.sk';
 
     /** @var string */
     protected $password;
@@ -43,7 +43,7 @@ class Api
         $this->options = $options + ['testMode' => false, 'timeout' => 10];
 
         if ($this->options['testMode']) {
-            $this->endpoint = 'https://capi.dpdportal.sk/apix/shipment/json';
+            $this->endpoint = 'https://capi.dpdportal.sk/apix';
         }
     }
 
@@ -56,11 +56,35 @@ class Api
      */
     public function send(array $shipment): array
     {
-        $response = $this->sendRequest('create', [
+        $response = $this->sendRequest('create', '/shipment/json', [
             'shipment' => $shipment
         ]);
 
+        if (isset($response['error']) && \is_array($response['error'])) {
+            throw new ShipmentApiException($response['error']['message']);
+        }
+
+        if (isset($response['result']['result'][0]['success']) && !$response['result']['result'][0]['success']) {
+            throw new ShipmentApiException(\implode(' ', \array_column($response['result']['result'][0]['messages'], 'value')));
+        }
+
         return $response['result']['result'][0];
+    }
+
+    /**
+     * Get available parcelshops.
+     *
+     * @return array
+     */
+    public function getParcelshops(): array
+    {
+        $response = $this->sendRequest('getAll', '/parcelshop/json', []);
+
+        if (!isset($response['result']['result']) && $response['result']['result'] != 'OK') {
+            throw new ShipmentApiException('Unable to retrieve parcelshops.');
+        }
+
+        return $response['result']['parcelshops']['parcelshop'] ?? [];
     }
 
     /**
@@ -71,7 +95,7 @@ class Api
      *
      * @return array
      */
-    protected function sendRequest(string $method, array $data): array
+    protected function sendRequest(string $method, string $path, array $data): array
     {
         $data['DPDSecurity'] = [
             'SecurityToken' => [
@@ -88,7 +112,7 @@ class Api
             'params' => $data
         ];
 
-        $ch = \curl_init($this->endpoint);
+        $ch = \curl_init($this->endpoint . $path);
         \curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         \curl_setopt($ch, CURLOPT_POST, true);
         \curl_setopt($ch, CURLOPT_POSTFIELDS, \json_encode($postData));
@@ -102,10 +126,6 @@ class Api
 
         \curl_close($ch);
         $response = \json_decode($response, true);
-
-        if (isset($response['result']['result'][0]['success']) && !$response['result']['result'][0]['success']) {
-            throw new ShipmentApiException(\implode(' ', \array_column($response['result']['result'][0]['messages'], 'value')));
-        }
 
         return $response;
     }
