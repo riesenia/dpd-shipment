@@ -2,6 +2,7 @@
     "name": "riesenia/dpd-shipment",
     "description": "DPD Shipment Api PHP client implementation",
     "license": "MIT",
+    "version": "2.0.0",
     "require": {
         "ext-curl": "*"
     },
