@@ -100,8 +100,7 @@ class Api
         $data['DPDSecurity'] = [
             'SecurityToken' => [
                 'ClientKey' => $this->clientKey,
-                'Email' => $this->email,
-                'Password' => $this->password
+                'Email' => $this->email
             ]
         ];
 
