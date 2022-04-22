@@ -16,7 +16,7 @@ class Api
     protected $email;
 
     /** @var string */
-    protected $endpoint = 'https://api.dpdportal.sk';
+    protected $endpoint = 'https://api.dpd.sk';
 
     /** @var string */
     protected $password;
@@ -43,7 +43,7 @@ class Api
         $this->options = $options + ['testMode' => false, 'timeout' => 10];
 
         if ($this->options['testMode']) {
-            $this->endpoint = 'https://capi.dpdportal.sk/apix';
+            $this->endpoint = 'https://capi.dpd.sk';
         }
     }
 
@@ -100,8 +100,7 @@ class Api
         $data['DPDSecurity'] = [
             'SecurityToken' => [
                 'ClientKey' => $this->clientKey,
-                'Email' => $this->email,
-                'Password' => $this->password
+                'Email' => $this->email
             ]
         ];
 
