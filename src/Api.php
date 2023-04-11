@@ -84,7 +84,7 @@ class Api
             throw new ShipmentApiException('Unable to retrieve parcelshops.');
         }
 
-        return $response['result']['parcelshops']['parcelshop'] ?? [];
+        return $response['result']['parcelshops'] ?? [];
     }
 
     /**
