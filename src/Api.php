@@ -65,7 +65,13 @@ class Api
         }
 
         if (isset($response['result']['result'][0]['success']) && !$response['result']['result'][0]['success']) {
-            throw new ShipmentApiException(\implode(' ', \array_column($response['result']['result'][0]['messages'], 'value')));
+            $messages = [];
+
+            foreach ($response['result']['result'][0]['messages'] as $message) {
+                $messages[] = $message['value'] ?? $message;
+            }
+
+            throw new ShipmentApiException(\implode(' ', $messages));
         }
 
         return $response['result']['result'][0];
